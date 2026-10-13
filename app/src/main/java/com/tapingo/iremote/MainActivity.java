@@ -309,7 +309,7 @@ public class MainActivity extends Activity {
 
             @Override
             protected void onClose(
-                    CloseCode code,
+                    WebSocketFrame.CloseCode code,
                     String reason,
                     boolean initiatedByRemote
             ) {
