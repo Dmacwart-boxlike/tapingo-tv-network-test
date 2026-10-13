@@ -1,0 +1,20 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.tapingo.iremote'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.tapingo.iremote.networktest'
+        minSdk 23
+        targetSdk 28
+        versionCode 1
+        versionName '0.1-network-test'
+    }
+}
+
+dependencies {
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
+}
