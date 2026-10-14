@@ -197,7 +197,7 @@ public class MainActivity extends Activity {
                     "<div id='log'>Waiting for test...</div>" +
 
                     "<script>" +
-                    "let socket=null;" +
+                    "let socket=null;let heartbeatTimer=null;" +
 
                     "function log(s){" +
                     "document.getElementById('log').textContent+=" +
@@ -216,14 +216,22 @@ public class MainActivity extends Activity {
 
                     "socket.onopen=function(){" +
                     "document.getElementById('state').textContent='Status: CONNECTED';" +
-                    "log('WebSocket connected');};" +
-
+                    "log('WebSocket connected');" +
+                    "heartbeatTimer=setInterval(function(){" +
+                    "if(socket&&socket.readyState===WebSocket.OPEN){" +
+                    "socket.send('HEARTBEAT');" +
+                    "log('Heartbeat sent');" +
+                    "}},2000);" +
+                    "};" +
+                
                     "socket.onmessage=function(e){log('TV replied: '+e.data);};" +
 
                     "socket.onerror=function(){" +
                     "log('WebSocket error. Check that both servers are running.');};" +
 
                     "socket.onclose=function(e){" +
+                    "clearInterval(heartbeatTimer);" +
+                    "heartbeatTimer=null;" +
                     "document.getElementById('state').textContent='Status: DISCONNECTED';" +
                     "log('Connection closed (code '+e.code+')');};" +
                     "}" +
