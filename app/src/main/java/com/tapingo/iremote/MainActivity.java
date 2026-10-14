@@ -2,6 +2,8 @@ package com.tapingo.iremote;
 
 import android.app.Activity;
 import android.media.AudioManager;
+import android.content.Intent;
+import android.provider.Settings;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.view.Gravity;
@@ -189,6 +191,7 @@ public class MainActivity extends Activity {
                     "<h3>TV Volume Test</h3>" +
                     "<button onclick=\"sendCommand('VOLUME_UP')\">Volume +</button>" +
                     "<button onclick=\"sendCommand('VOLUME_DOWN')\">Volume −</button>" +
+                    "<button onclick=\"sendCommand('OPEN_SETTINGS')\">Full TV Settings</button>" +
                     "<p id='state'>Status: Not connected</p>" +
 
                     "<input id='message' value='Hello from iPhone' " +
@@ -372,6 +375,23 @@ public class MainActivity extends Activity {
             return "COMMAND_ERROR: " + commandName + " — " + e.getClass().getSimpleName();
         }
     }
+private void openTvSettings() {
+    runOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Intent intent = new Intent(Settings.ACTION_SETTINGS);
+                startActivity(intent);
+            } catch (Exception e) {
+                android.util.Log.e(
+                        "TapingoRemote",
+                        "Could not open TV Settings",
+                        e
+                );
+            }
+        }
+    });
+}
 
     private class WebSocketTestServer extends NanoWSD {
 
@@ -421,10 +441,13 @@ public class MainActivity extends Activity {
                         text = "";
                     }
 
-                    if ("COMMAND:VOLUME_UP".equals(text)) {
+                    if ("COMMAND:VOLUME_UP".equals(text)) { 
                         send(adjustTvVolume(AudioManager.ADJUST_RAISE, "VOLUME_UP"));
-                    } else if ("COMMAND:VOLUME_DOWN".equals(text)) {
+                    } else if ("COMMAND:VOLUME_DOWN".equals(text)) { 
                         send(adjustTvVolume(AudioManager.ADJUST_LOWER, "VOLUME_DOWN"));
+                    } else if ("COMMAND:OPEN_SETTINGS".equals(text)) { 
+                        send("COMMAND_ACCEPTED: OPEN_SETTINGS"); 
+                        openTvSettings();
                     } else {
                         send("TV ECHO: " + text);
                     }
