@@ -192,6 +192,7 @@ public class MainActivity extends Activity {
                     "<button onclick=\"sendCommand('VOLUME_UP')\">Volume +</button>" +
                     "<button onclick=\"sendCommand('VOLUME_DOWN')\">Volume −</button>" +
                     "<button onclick=\"sendCommand('OPEN_SETTINGS')\">Full TV Settings</button>" +
+                    "<button onclick=\"sendCommand('MUTE_TOGGLE')\">Mute / Unmute</button>" +
                     "<p id='state'>Status: Not connected</p>" +
 
                     "<input id='message' value='Hello from iPhone' " +
@@ -375,6 +376,28 @@ public class MainActivity extends Activity {
             return "COMMAND_ERROR: " + commandName + " — " + e.getClass().getSimpleName();
         }
     }
+private String toggleTvMute() { 
+    try { 
+        AudioManager audioManager = 
+            (AudioManager) getSystemService(AUDIO_SERVICE); 
+        if (audioManager == null) { 
+            return "COMMAND_ERROR: AudioManager unavailable"; 
+        }
+        audioManager.adjustStreamVolume( 
+            AudioManager.STREAM_MUSIC, 
+            AudioManager.ADJUST_TOGGLE_MUTE, 
+            AudioManager.FLAG_SHOW_UI 
+        );
+        return "COMMAND_ACCEPTED: MUTE_TOGGLE";
+        } catch (Exception e) {
+        android.util.Log.e( 
+            "TapingoRemote", 
+            "Mute command failed", 
+            e 
+        );
+        return "COMMAND_ERROR: MUTE_TOGGLE"; 
+    } 
+}
 private void openTvSettings() {
     runOnUiThread(new Runnable() {
         @Override
@@ -448,6 +471,8 @@ private void openTvSettings() {
                     } else if ("COMMAND:OPEN_SETTINGS".equals(text)) { 
                         send("COMMAND_ACCEPTED: OPEN_SETTINGS"); 
                         openTvSettings();
+                     } else if ("COMMAND:MUTE_TOGGLE".equals(text)) {
+                        send(toggleTvMute());
                     } else {
                         send("TV ECHO: " + text);
                     }
