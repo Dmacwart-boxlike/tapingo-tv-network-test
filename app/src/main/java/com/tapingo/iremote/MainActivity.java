@@ -188,11 +188,13 @@ public class MainActivity extends Activity {
                     "<p>This page tests two-way communication with your TV.</p>" +
 
                     "<button onclick='connectWS()'>Connect WebSocket</button>" +
-                    "<h3>TV Volume Test</h3>" +
+                    "<h3>TV Remote Controls</h3>" +
                     "<button onclick=\"sendCommand('VOLUME_UP')\">Volume +</button>" +
                     "<button onclick=\"sendCommand('VOLUME_DOWN')\">Volume −</button>" +
-                    "<button onclick=\"sendCommand('OPEN_SETTINGS')\">Full TV Settings</button>" +
                     "<button onclick=\"sendCommand('MUTE_TOGGLE')\">Mute / Unmute</button>" +
+                    "<button onclick=\"sendCommand('OPEN_SETTINGS')\">Full TV Settings</button>" +
+                    "<button onclick=\"sendCommand('HOME')\">Home</button>" +
+                    "<button onclick=\"sendCommand('BACK')\">Back</button>" +
                     "<p id='state'>Status: Not connected</p>" +
 
                     "<input id='message' value='Hello from iPhone' " +
