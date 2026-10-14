@@ -1,6 +1,7 @@
 package com.tapingo.iremote;
 
 import android.app.Activity;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.view.Gravity;
@@ -57,8 +58,8 @@ public class MainActivity extends Activity {
                 "\nKeep this screen open during testing.\n\n" +
                 "1. Open the address below on your iPhone.\n" +
                 "2. Tap Connect WebSocket.\n" +
-                "3. Send a test message.\n\n" +
-                "This tests communication only; it does not control the TV yet."
+                "3. Test the volume buttons.\n\n" +
+                "This test supports Volume Up and Volume Down only."
         );
         note.setTextColor(Color.LTGRAY);
         note.setTextSize(17);
@@ -151,7 +152,7 @@ public class MainActivity extends Activity {
             if ("/ping".equals(path)) {
                 String body =
                         "{\"ok\":true," +
-                        "\"app\":\"Tapingo iRemote Network Test\"," +
+                        "\"app\":\"Tapingo iRemote Network Test\", " +
                         "\"message\":\"iPhone reached the TV\"}";
 
                 Response response = newFixedLengthResponse(
@@ -185,6 +186,9 @@ public class MainActivity extends Activity {
                     "<p>This page tests two-way communication with your TV.</p>" +
 
                     "<button onclick='connectWS()'>Connect WebSocket</button>" +
+                    "<h3>TV Volume Test</h3>" +
+                    "<button onclick=\"sendCommand('VOLUME_UP')\">Volume +</button>" +
+                    "<button onclick=\"sendCommand('VOLUME_DOWN')\">Volume −</button>" +
                     "<p id='state'>Status: Not connected</p>" +
 
                     "<input id='message' value='Hello from iPhone' " +
@@ -288,6 +292,15 @@ public class MainActivity extends Activity {
                     "};" +
                     "}" +
 
+                    "function sendCommand(command){" +
+                    "if(!socket||socket.readyState!==WebSocket.OPEN){" +
+                    "log('Not connected. Please wait for connection.');" +
+                    "return;" +
+                    "}" +
+                    "socket.send('COMMAND:'+command);" +
+                    "log('iPhone sent command: '+command);" +
+                    "}" +
+
                     "function sendWS(){" +
                     "if(!socket||socket.readyState!==WebSocket.OPEN){" +
                     "log('Not connected. Please wait for reconnection.');" +
@@ -342,7 +355,25 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static class WebSocketTestServer extends NanoWSD {
+    private String adjustTvVolume(int direction, String commandName) {
+        try {
+            AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audioManager == null) {
+                return "COMMAND_ERROR: AudioManager unavailable";
+            }
+            audioManager.adjustStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    direction,
+                    AudioManager.FLAG_SHOW_UI
+            );
+            return "COMMAND_ACCEPTED: " + commandName;
+        } catch (Exception e) {
+            android.util.Log.e("TapingoRemote", "Volume command failed", e);
+            return "COMMAND_ERROR: " + commandName + " — " + e.getClass().getSimpleName();
+        }
+    }
+
+    private class WebSocketTestServer extends NanoWSD {
 
         WebSocketTestServer() {
             super("0.0.0.0", 8081);
@@ -366,7 +397,7 @@ public class MainActivity extends Activity {
             return super.serve(session);
         }
 
-        private static class TestWebSocket extends WebSocket {
+        private class TestWebSocket extends WebSocket {
 
             TestWebSocket(IHTTPSession handshake) {
                 super(handshake);
@@ -390,7 +421,13 @@ public class MainActivity extends Activity {
                         text = "";
                     }
 
-                    send("TV ECHO: " + text);
+                    if ("COMMAND:VOLUME_UP".equals(text)) {
+                        send(adjustTvVolume(AudioManager.ADJUST_RAISE, "VOLUME_UP"));
+                    } else if ("COMMAND:VOLUME_DOWN".equals(text)) {
+                        send(adjustTvVolume(AudioManager.ADJUST_LOWER, "VOLUME_DOWN"));
+                    } else {
+                        send("TV ECHO: " + text);
+                    }
 
                 } catch (IOException e) {
                     onException(e);
