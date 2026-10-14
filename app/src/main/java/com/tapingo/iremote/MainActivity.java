@@ -415,6 +415,9 @@ private void openTvSettings() {
         }
     });
 }
+    private String performHomeOrBack(String action) {
+    return RemoteAccessibilityService.performRemoteAction(action);
+}
 
     private class WebSocketTestServer extends NanoWSD {
 
@@ -471,8 +474,12 @@ private void openTvSettings() {
                     } else if ("COMMAND:OPEN_SETTINGS".equals(text)) { 
                         send("COMMAND_ACCEPTED: OPEN_SETTINGS"); 
                         openTvSettings();
-                     } else if ("COMMAND:MUTE_TOGGLE".equals(text)) {
+                    } else if ("COMMAND:MUTE_TOGGLE".equals(text)) {
                         send(toggleTvMute());
+                    } else if ("COMMAND:HOME".equals(text)) {
+                        send(performHomeOrBack("HOME"));
+                    } else if ("COMMAND:BACK".equals(text)) {
+                        send(performHomeOrBack("BACK"));
                     } else {
                         send("TV ECHO: " + text);
                     }
