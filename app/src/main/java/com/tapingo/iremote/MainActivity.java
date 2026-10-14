@@ -197,56 +197,138 @@ public class MainActivity extends Activity {
                     "<div id='log'>Waiting for test...</div>" +
 
                     "<script>" +
-                    "let socket=null;let heartbeatTimer=null;" +
+                    "let socket=null;" +
+                    "let heartbeatTimer=null;" +
+                    "let reconnectTimer=null;" +
+                    "let manuallyDisconnected=false;" +
+                    "let reconnectDelay=1500;" +
+                    "let lastMessageTime=0;" +
 
                     "function log(s){" +
                     "document.getElementById('log').textContent+=" +
                     "'\\n'+new Date().toLocaleTimeString()+' — '+s;" +
                     "}" +
 
+                    "function setState(s){" +
+                    "document.getElementById('state').textContent='Status: '+s;" +
+                    "}" +
+
+                    "function stopHeartbeat(){" +
+                    "if(heartbeatTimer)clearInterval(heartbeatTimer);" +
+                    "heartbeatTimer=null;" +
+                    "}" +
+
+                    "function stopReconnectTimer(){" +
+                    "if(reconnectTimer)clearTimeout(reconnectTimer);" +
+                    "reconnectTimer=null;" +
+                    "}" +
+
+                    "function scheduleReconnect(){" +
+                    "if(manuallyDisconnected||document.hidden||reconnectTimer)return;" +
+                    "setState('RECONNECTING');" +
+                    "log('Reconnecting in '+(reconnectDelay/1000)+' seconds');" +
+                    "reconnectTimer=setTimeout(function(){" +
+                    "reconnectTimer=null;" +
+                    "connectWS();" +
+                    "},reconnectDelay);" +
+                    "reconnectDelay=Math.min(reconnectDelay*2,10000);" +
+                    "}" +
+
                     "function connectWS(){" +
-                    "if(socket && socket.readyState===WebSocket.OPEN){" +
-                    "log('Already connected');return;}" +
+                    "if(manuallyDisconnected)return;" +
+                    "if(document.hidden)return;" +
+                    "if(socket&&(socket.readyState===WebSocket.OPEN||" +
+                    "socket.readyState===WebSocket.CONNECTING))return;" +
+
+                    "stopReconnectTimer();" +
+                    "stopHeartbeat();" +
 
                     "const host=window.location.hostname;" +
-                    "socket=new WebSocket('ws://'+host+':8081/ws');" +
-
-                    "document.getElementById('state').textContent='Status: Connecting...';" +
+                    "setState('CONNECTING');" +
                     "log('Connecting to '+host+':8081/ws');" +
 
+                    "try{" +
+                    "socket=new WebSocket('ws://'+host+':8081/ws');" +
+                    "}catch(e){" +
+                    "log('Could not create WebSocket: '+e.message);" +
+                    "scheduleReconnect();" +
+                    "return;" +
+                    "}" +
+
                     "socket.onopen=function(){" +
-                    "document.getElementById('state').textContent='Status: CONNECTED';" +
+                    "reconnectDelay=1500;" +
+                    "lastMessageTime=Date.now();" +
+                    "setState('CONNECTED');" +
                     "log('WebSocket connected');" +
+
+                    "stopHeartbeat();" +
                     "heartbeatTimer=setInterval(function(){" +
                     "if(socket&&socket.readyState===WebSocket.OPEN){" +
                     "socket.send('HEARTBEAT');" +
                     "log('Heartbeat sent');" +
-                    "}},2000);" +
+                    "}" +
+                    "},2000);" +
                     "};" +
-                
-                    "socket.onmessage=function(e){log('TV replied: '+e.data);};" +
+
+                    "socket.onmessage=function(e){" +
+                    "lastMessageTime=Date.now();" +
+                    "log('TV replied: '+e.data);" +
+                    "};" +
 
                     "socket.onerror=function(){" +
-                    "log('WebSocket error. Check that both servers are running.');};" +
+                    "log('WebSocket error; waiting for connection to close');" +
+                    "};" +
 
                     "socket.onclose=function(e){" +
-                    "clearInterval(heartbeatTimer);" +
-                    "heartbeatTimer=null;" +
-                    "document.getElementById('state').textContent='Status: DISCONNECTED';" +
-                    "log('Connection closed (code '+e.code+')');};" +
+                    "stopHeartbeat();" +
+                    "socket=null;" +
+                    "setState(manuallyDisconnected?'DISCONNECTED':'DISCONNECTED — RETRYING');" +
+                    "log('Connection closed (code '+e.code+')');" +
+                    "scheduleReconnect();" +
+                    "};" +
                     "}" +
 
                     "function sendWS(){" +
-                    "if(!socket || socket.readyState!==WebSocket.OPEN){" +
-                    "log('Not connected. Tap Connect WebSocket first.');return;}" +
+                    "if(!socket||socket.readyState!==WebSocket.OPEN){" +
+                    "log('Not connected. Please wait for reconnection.');" +
+                    "return;" +
+                    "}" +
                     "const message=document.getElementById('message').value;" +
                     "socket.send(message);" +
                     "log('iPhone sent: '+message);" +
                     "}" +
 
                     "function disconnectWS(){" +
-                    "if(socket){socket.close();socket=null;}" +
+                    "manuallyDisconnected=true;" +
+                    "stopHeartbeat();" +
+                    "stopReconnectTimer();" +
+                    "if(socket){" +
+                    "const oldSocket=socket;" +
+                    "socket=null;" +
+                    "oldSocket.close();" +
                     "}" +
+                    "setState('DISCONNECTED');" +
+                    "log('Disconnected manually');" +
+                    "}" +
+
+                    "document.addEventListener('visibilitychange',function(){" +
+                    "if(!document.hidden){" +
+                    "log('Page active; checking connection');" +
+                    "if(!manuallyDisconnected&&(!socket||" +
+                    "socket.readyState!==WebSocket.OPEN)){" +
+                    "stopReconnectTimer();" +
+                    "connectWS();" +
+                    "}" +
+                    "}" +
+                    "});" +
+
+                    "window.addEventListener('pageshow',function(){" +
+                    "if(!document.hidden&&!manuallyDisconnected&&" +
+                    "(!socket||socket.readyState!==WebSocket.OPEN)){" +
+                    "stopReconnectTimer();" +
+                    "connectWS();" +
+                    "}" +
+                    "});" +
                     "</script></body></html>";
 
             Response response = newFixedLengthResponse(
