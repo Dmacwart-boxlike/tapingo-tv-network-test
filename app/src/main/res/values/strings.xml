@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Tapingo Network Test</string>
+    <string name="accessibility_service_description">Allows Tapingo remote controls to perform Home and Back actions on the TV.</string>
 </resources>
