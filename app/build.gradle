@@ -13,6 +13,16 @@ android {
         versionCode 1
         versionName '0.1-network-test'
     }
+
+    // BouncyCastle ships duplicate multi-release JAR metadata across
+    // bcprov, bcpkix and bcutil. These entries are not needed in the APK.
+    packaging {
+        resources {
+            excludes += [
+                'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+            ]
+        }
+    }
 }
 
 dependencies {
