@@ -1,0 +1,11 @@
+MINIMAL STAGE 2 OVERLAY — APPLY ONLY ON BRANCH native-v2-stage2
+
+This overlay contains only the three new Java foundation classes, the corrected app/build.gradle,
+the build workflow update, and status notes. It does not replace MainActivity, the manifest,
+accessibility service, or any existing baseline files.
+
+Keep the directory structure exactly as shown. Upload the contents of this folder into the root
+of the native-v2-stage2 branch in GitHub, allowing app/build.gradle and .github/workflows/build.yml
+to be replaced, and adding the new app/src/main/java/.../atv/ files.
+
+Do not apply to main.
