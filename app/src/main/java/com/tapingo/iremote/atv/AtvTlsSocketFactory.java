@@ -1,4 +1,3 @@
-```java
 package com.tapingo.iremote.atv;
 
 import java.net.InetSocketAddress;
@@ -227,4 +226,3 @@ public final class AtvTlsSocketFactory {
         return result.toString();
     }
 }
-```
