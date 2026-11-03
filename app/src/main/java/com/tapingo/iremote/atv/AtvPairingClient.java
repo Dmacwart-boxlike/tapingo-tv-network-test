@@ -29,7 +29,7 @@ public final class AtvPairingClient {
 
     /** Opens TLS and advances through request/options/configuration. TV should display its code on success. */
     public PairingSession begin(String host) throws Exception {
-        SSLSocket socket=AtvTlsSocketFactory.connect(host,DEFAULT_PORT,identity,timeoutMillis);
+        SSLSocket socket = AtvTlsSocketFactory.connectForPairing(host, DEFAULT_PORT, identity, timeoutMillis);
         try {
             InputStream in=socket.getInputStream(); OutputStream out=socket.getOutputStream();
             send(out,PairingProtoCodec.pairingRequest("atvremote","Tapingo iRemote"));
