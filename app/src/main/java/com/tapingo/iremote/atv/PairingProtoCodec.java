@@ -1,4 +1,3 @@
-```java
 package com.tapingo.iremote.atv;
 
 import java.io.ByteArrayOutputStream;
@@ -511,4 +510,3 @@ public final class PairingProtoCodec {
         }
     }
 }
-```
