@@ -5,6 +5,7 @@ import android.media.AudioManager;
 import android.content.Intent;
 import android.provider.Settings;
 import android.os.Bundle;
+import com.tapingo.iremote.atv.AtvPairingPanel;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.ViewGroup;
@@ -24,6 +25,7 @@ public class MainActivity extends Activity {
     private TestServer httpServer;
     private WebSocketTestServer wsServer;
     private TextView status;
+    private AtvPairingPanel pairingPanel;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -69,9 +71,20 @@ public class MainActivity extends Activity {
         note.setPadding(0, 24, 0, 0);
         root.addView(note);
 
-        setContentView(root);
+// Android TV Remote v2 pairing panel
+pairingPanel = new AtvPairingPanel(this);
 
-        startServers();
+root.addView(
+        pairingPanel,
+        new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+);
+
+setContentView(root);
+
+startServers();
     }
 
     private void startServers() {
@@ -135,11 +148,17 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        stopServers();
-        super.onDestroy();
+   @Override
+protected void onDestroy() {
+
+    if (pairingPanel != null) {
+        pairingPanel.shutdown();
     }
+
+    stopServers();
+
+    super.onDestroy();
+}
 
     private static class TestServer extends NanoHTTPD {
 
