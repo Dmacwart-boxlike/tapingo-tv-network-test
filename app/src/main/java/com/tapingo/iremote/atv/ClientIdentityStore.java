@@ -61,10 +61,10 @@ public final class ClientIdentityStore {
         JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
                 subject, serial, notBefore, notAfter, subject, pair.getPublic());
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
-                .setProvider("BC").build(pair.getPrivate());
+                .build(pair.getPrivate());
         X509CertificateHolder holder = builder.build(signer);
         X509Certificate certificate = new JcaX509CertificateConverter()
-                .setProvider("BC").getCertificate(holder);
+                .getCertificate(holder);
         certificate.checkValidity(new Date());
         certificate.verify(pair.getPublic());
 
