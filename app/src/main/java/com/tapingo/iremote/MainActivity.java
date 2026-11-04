@@ -11,6 +11,7 @@ import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.ScrollView;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -33,7 +34,7 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(32, 32, 32, 32);
         root.setBackgroundColor(Color.rgb(18, 24, 38));
 
@@ -82,7 +83,19 @@ root.addView(
         )
 );
 
-setContentView(root);
+ScrollView scrollView = new ScrollView(this);
+scrollView.setFillViewport(true);
+scrollView.setVerticalScrollBarEnabled(true);
+
+scrollView.addView(
+        root,
+        new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+);
+
+setContentView(scrollView);
 
 startServers();
     }
