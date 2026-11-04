@@ -1,4 +1,3 @@
-```java
 package com.tapingo.iremote.atv;
 
 import android.content.Context;
@@ -294,4 +293,3 @@ public class AtvPairingPanel extends LinearLayout {
         }
     }
 }
-```
