@@ -249,7 +249,7 @@ public final class AtvPairingClient {
         return raw;
     }
 
-    private static byte[] unsignedExponent(BigInteger value) {
+private static byte[] unsignedExponent(BigInteger value) {
     return unsigned(value);
 }
 
