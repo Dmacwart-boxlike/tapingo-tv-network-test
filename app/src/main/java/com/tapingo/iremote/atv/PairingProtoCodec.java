@@ -226,18 +226,18 @@ public final class PairingProtoCodec {
             );
         }
 
-        if (type == 0 || payload == null) {
-            throw new IOException(
-                    "Polo OuterMessage has no recognized message payload"
-            );
-        }
+      if (status != 0 && status != STATUS_OK) {
+    throw new IOException(
+            "TV returned Polo status " + status
+                    + " (message type " + type + ")"
+    );
+}
 
-        if (status != 0 && status != STATUS_OK) {
-            throw new IOException(
-                    "TV returned Polo status " + status
-                            + " (message type " + type + ")"
-            );
-        }
+if (type == 0 || payload == null) {
+    throw new IOException(
+            "Polo OuterMessage has no recognized message payload"
+    );
+}
 
         return new OuterMessage(
                 version,
