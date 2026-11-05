@@ -250,26 +250,8 @@ public final class AtvPairingClient {
     }
 
     private static byte[] unsignedExponent(BigInteger value) {
-        byte[] raw = unsigned(value);
-
-        if (raw.length > 4) {
-            throw new IllegalArgumentException(
-                    "RSA exponent is unexpectedly large"
-            );
-        }
-
-        byte[] padded = new byte[4];
-
-        System.arraycopy(
-                raw,
-                0,
-                padded,
-                4 - raw.length,
-                raw.length
-        );
-
-        return padded;
-    }
+    return unsigned(value);
+}
 
     private static void send(OutputStream out, byte[] message)
             throws Exception {
