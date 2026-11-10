@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.provider.Settings;
 import android.os.Bundle;
 import com.tapingo.iremote.atv.AtvPairingPanel;
+import com.tapingo.iremote.atv.AtvControlPanel;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.ViewGroup;
@@ -27,78 +28,91 @@ public class MainActivity extends Activity {
     private WebSocketTestServer wsServer;
     private TextView status;
     private AtvPairingPanel pairingPanel;
+    private AtvControlPanel controlPanel;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+@Override
+public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(32, 32, 32, 32);
-        root.setBackgroundColor(Color.rgb(18, 24, 38));
+    LinearLayout root = new LinearLayout(this);
+    root.setOrientation(LinearLayout.VERTICAL);
+    root.setGravity(Gravity.CENTER_HORIZONTAL);
+    root.setPadding(32, 32, 32, 32);
+    root.setBackgroundColor(Color.rgb(18, 24, 38));
 
-        TextView title = new TextView(this);
-        title.setText("Tapingo iRemote\nNETWORK TEST");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(28);
-        title.setGravity(Gravity.CENTER);
-        root.addView(title);
+    TextView title = new TextView(this);
+    title.setText("Tapingo iRemote\nNETWORK TEST");
+    title.setTextColor(Color.WHITE);
+    title.setTextSize(28);
+    title.setGravity(Gravity.CENTER);
+    root.addView(title);
 
-        status = new TextView(this);
-        status.setTextColor(Color.rgb(135, 235, 190));
-        status.setTextSize(18);
-        status.setGravity(Gravity.CENTER);
-        status.setPadding(0, 28, 0, 0);
-        root.addView(
-                status,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-        );
+    status = new TextView(this);
+    status.setTextColor(Color.rgb(135, 235, 190));
+    status.setTextSize(18);
+    status.setGravity(Gravity.CENTER);
+    status.setPadding(0, 28, 0, 0);
 
-        TextView note = new TextView(this);
-        note.setText(
-                "\nKeep this screen open during testing.\n\n" +
-                "1. Open the address below on your iPhone.\n" +
-                "2. Tap Connect WebSocket.\n" +
-                "3. Test the volume buttons.\n\n" +
-                "This test supports Volume Up and Volume Down only."
-        );
-        note.setTextColor(Color.LTGRAY);
-        note.setTextSize(17);
-        note.setGravity(Gravity.CENTER);
-        note.setPadding(0, 24, 0, 0);
-        root.addView(note);
+    root.addView(
+            status,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+    );
 
-// Android TV Remote v2 pairing panel
-pairingPanel = new AtvPairingPanel(this);
+    TextView note = new TextView(this);
+    note.setText(
+            "\nKeep this screen open during testing.\n\n" +
+            "1. Open the address below on your iPhone.\n" +
+            "2. Tap Connect WebSocket.\n" +
+            "3. Test the volume buttons.\n\n" +
+            "This test supports Volume Up and Volume Down only."
+    );
+    note.setTextColor(Color.LTGRAY);
+    note.setTextSize(17);
+    note.setGravity(Gravity.CENTER);
+    note.setPadding(0, 24, 0, 0);
+    root.addView(note);
 
-root.addView(
-        pairingPanel,
-        new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-);
+    // Existing Android TV Remote v2 pairing panel
+    pairingPanel = new AtvPairingPanel(this);
 
-ScrollView scrollView = new ScrollView(this);
-scrollView.setFillViewport(true);
-scrollView.setVerticalScrollBarEnabled(true);
+    root.addView(
+            pairingPanel,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+    );
 
-scrollView.addView(
-        root,
-        new ScrollView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-);
+    // New Android TV Remote v2 control test panel
+    controlPanel = new AtvControlPanel(this);
 
-setContentView(scrollView);
+    root.addView(
+            controlPanel,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+    );
 
-startServers();
-    }
+    ScrollView scrollView = new ScrollView(this);
+    scrollView.setFillViewport(true);
+    scrollView.setVerticalScrollBarEnabled(true);
+
+    scrollView.addView(
+            root,
+            new ScrollView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+    );
+
+    setContentView(scrollView);
+
+    startServers();
+}
 
     private void startServers() {
         try {
@@ -161,11 +175,32 @@ startServers();
         }
     }
 
-   @Override
+@Override
+protected void onActivityResult(
+        int requestCode,
+        int resultCode,
+        Intent data
+) {
+    super.onActivityResult(requestCode, resultCode, data);
+
+    if (controlPanel != null) {
+        controlPanel.handleFileResult(
+                requestCode,
+                resultCode,
+                data
+        );
+    }
+}
+
+ @Override
 protected void onDestroy() {
 
     if (pairingPanel != null) {
         pairingPanel.shutdown();
+    }
+
+    if (controlPanel != null) {
+        controlPanel.shutdown();
     }
 
     stopServers();
