@@ -328,7 +328,7 @@ public class AtvControlPanel extends LinearLayout {
                     }
 
                     @Override
-                    public void onDisconnected() {
+                    public void onDisconnected(String reason) {
 
                         mainHandler.post(() -> {
 
@@ -339,7 +339,7 @@ public class AtvControlPanel extends LinearLayout {
 
                             setControlButtonsEnabled(false);
 
-                            setStatus("Disconnected from TV.");
+                            setStatus("Disconnected from TV: " + reason);
                         });
                     }
 
@@ -372,54 +372,54 @@ public class AtvControlPanel extends LinearLayout {
 
         switch (label) {
 
-            case "UP":
-                remoteClient.up();
-                break;
+    case "UP":
+        remoteClient.pressUp();
+        break;
 
-            case "DOWN":
-                remoteClient.down();
-                break;
+    case "DOWN":
+        remoteClient.pressDown();
+        break;
 
-            case "LEFT":
-                remoteClient.left();
-                break;
+    case "LEFT":
+        remoteClient.pressLeft();
+        break;
 
-            case "RIGHT":
-                remoteClient.right();
-                break;
+    case "RIGHT":
+        remoteClient.pressRight();
+        break;
 
-            case "OK":
-                remoteClient.center();
-                break;
+    case "OK":
+        remoteClient.pressCenter();
+        break;
 
-            case "HOME":
-                remoteClient.home();
-                break;
+    case "HOME":
+        remoteClient.pressHome();
+        break;
 
-            case "BACK":
-                remoteClient.back();
-                break;
+    case "BACK":
+        remoteClient.pressBack();
+        break;
 
-            case "VOL +":
-                remoteClient.volumeUp();
-                break;
+    case "VOL +":
+        remoteClient.volumeUp();
+        break;
 
-            case "VOL -":
-                remoteClient.volumeDown();
-                break;
+    case "VOL -":
+        remoteClient.volumeDown();
+        break;
 
-            case "MUTE":
-                remoteClient.mute();
-                break;
+    case "MUTE":
+        remoteClient.mute();
+        break;
 
-            case "PLAY / PAUSE":
-                remoteClient.playPause();
-                break;
+    case "PLAY / PAUSE":
+        remoteClient.playPause();
+        break;
 
-            case "POWER":
-                remoteClient.power();
-                break;
-        }
+    case "POWER":
+        remoteClient.power();
+        break;
+}
     }
 
     private void disconnect() {
