@@ -1,10 +1,7 @@
 package com.tapingo.iremote.atv;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -13,12 +10,14 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.io.File;
+import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class AtvControlPanel extends LinearLayout {
 
-    public static final int FILE_PICKER_REQUEST = 7466;
+    private static final int TRANSFER_PORT = 8082;
 
     private final android.os.Handler mainHandler =
             new android.os.Handler(android.os.Looper.getMainLooper());
@@ -29,28 +28,29 @@ public class AtvControlPanel extends LinearLayout {
     private EditText hostInput;
     private EditText passwordInput;
     private TextView statusText;
+    private TextView transferInfoText;
 
+    private Button startTransferButton;
     private Button importButton;
     private Button connectButton;
     private Button disconnectButton;
 
     private ClientIdentityStore.Identity identity;
     private RemoteV2Client remoteClient;
+    private IdentityTransferServer transferServer;
+    private File receivedIdentityFile;
 
     private boolean connected = false;
     private boolean shutDown = false;
 
     public AtvControlPanel(Context context) {
         super(context);
-
         setOrientation(VERTICAL);
         setPadding(24, 32, 24, 32);
-
         buildInterface();
     }
 
     private void buildInterface() {
-
         TextView heading = new TextView(getContext());
         heading.setText("Tapingo iRemote v2 Control Test");
         heading.setTextSize(22);
@@ -59,251 +59,261 @@ public class AtvControlPanel extends LinearLayout {
 
         TextView instructions = new TextView(getContext());
         instructions.setText(
-                "Import your temporary TV identity, then connect "
-                + "to your Android TV."
+                "Transfer the existing paired identity from your Windows laptop, "
+                        + "import it on this TV, then connect."
         );
         instructions.setTextSize(14);
         instructions.setPadding(0, 12, 0, 20);
         addView(instructions);
 
         addLabel("TV IP Address");
-
         hostInput = new EditText(getContext());
         hostInput.setSingleLine(true);
+        hostInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         hostInput.setText("192.168.100.5");
         hostInput.setHint("Example: 192.168.100.5");
         addView(hostInput);
 
-        addLabel("Temporary identity password");
+        startTransferButton = makeButton("1. START LAPTOP IDENTITY TRANSFER");
+        startTransferButton.setOnClickListener(v -> startIdentityTransfer());
+        addView(startTransferButton);
 
+        transferInfoText = new TextView(getContext());
+        transferInfoText.setText(
+                "When transfer starts, open the displayed address on your Windows laptop."
+        );
+        transferInfoText.setTextSize(14);
+        transferInfoText.setPadding(0, 10, 0, 10);
+        addView(transferInfoText);
+
+        addLabel("PKCS12 identity password (enter on TV only)");
         passwordInput = new EditText(getContext());
         passwordInput.setSingleLine(true);
         passwordInput.setInputType(
-                InputType.TYPE_CLASS_TEXT
-                        | InputType.TYPE_TEXT_VARIATION_PASSWORD
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
         );
-        passwordInput.setHint("Enter your PKCS12 password");
+        passwordInput.setHint("Enter the password used when creating the new .p12 file");
         addView(passwordInput);
 
-        importButton = makeButton("1. SELECT AND IMPORT IDENTITY");
-        importButton.setOnClickListener(v -> selectIdentityFile());
+        importButton = makeButton("2. IMPORT RECEIVED IDENTITY");
+        importButton.setEnabled(false);
+        importButton.setOnClickListener(v -> importReceivedIdentity());
+        addView(importButton);
 
-        connectButton = makeButton("2. CONNECT TO TV");
+        connectButton = makeButton("3. CONNECT TO TV");
         connectButton.setEnabled(false);
         connectButton.setOnClickListener(v -> connectToTv());
+        addView(connectButton);
 
         disconnectButton = makeButton("DISCONNECT");
         disconnectButton.setEnabled(false);
         disconnectButton.setOnClickListener(v -> disconnect());
+        addView(disconnectButton);
 
         addLabel("Remote controls");
-
-        addControlRow(
-                "UP", "LEFT", "OK", "RIGHT", "DOWN"
-        );
-
-        addControlRow(
-                "HOME", "BACK"
-        );
-
-        addControlRow(
-                "VOL +", "VOL -", "MUTE"
-        );
-
-        addControlRow(
-                "PLAY / PAUSE", "POWER"
-        );
+        addControlRow("UP", "LEFT", "OK", "RIGHT", "DOWN");
+        addControlRow("HOME", "BACK");
+        addControlRow("VOL +", "VOL -", "MUTE");
+        addControlRow("PLAY / PAUSE", "POWER");
 
         statusText = new TextView(getContext());
-        statusText.setText("Status: Waiting for identity import");
+        statusText.setText("Status: Waiting to transfer identity");
         statusText.setTextSize(14);
         statusText.setPadding(0, 24, 0, 12);
         addView(statusText);
-
-        addView(importButton);
-        addView(connectButton);
-        addView(disconnectButton);
 
         setControlButtonsEnabled(false);
     }
 
     private void addLabel(String text) {
-
         TextView label = new TextView(getContext());
         label.setText(text);
         label.setTextSize(15);
         label.setTypeface(null, Typeface.BOLD);
         label.setPadding(0, 20, 0, 8);
-
         addView(label);
     }
 
     private Button makeButton(String text) {
-
         Button button = new Button(getContext());
         button.setText(text);
-
         LayoutParams params = new LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.WRAP_CONTENT
         );
-
         params.setMargins(0, 6, 0, 6);
         button.setLayoutParams(params);
-
         return button;
     }
 
     private void addControlRow(String... labels) {
-
         LinearLayout row = new LinearLayout(getContext());
         row.setOrientation(HORIZONTAL);
         row.setGravity(Gravity.CENTER);
 
         for (String label : labels) {
-
             Button button = new Button(getContext());
             button.setText(label);
             button.setTextSize(11);
-
             LayoutParams params = new LayoutParams(
                     0,
                     LayoutParams.WRAP_CONTENT,
                     1
             );
-
             params.setMargins(3, 4, 3, 4);
             row.addView(button, params);
-
             button.setOnClickListener(v -> sendControl(label));
             button.setEnabled(false);
         }
-
         addView(row);
     }
 
-    private void selectIdentityFile() {
+    private void startIdentityTransfer() {
+        if (shutDown) return;
 
-        if (shutDown) {
+        String host = hostInput.getText().toString().trim();
+        if (host.isEmpty()) {
+            setStatus("Enter the TV's current IP address first.");
             return;
         }
 
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        stopIdentityTransferServer();
+        String token = createOneTimeToken();
 
-        intent.setType("*/*");
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        transferServer = new IdentityTransferServer(
+                getContext(),
+                TRANSFER_PORT,
+                token,
+                new IdentityTransferServer.Listener() {
+                    @Override
+                    public void onIdentityUploaded(File file) {
+                        mainHandler.post(() -> {
+                            receivedIdentityFile = file;
+                            importButton.setEnabled(true);
+                            startTransferButton.setEnabled(true);
+                            transferInfoText.setText(
+                                    "Identity received successfully. Enter its password below "
+                                            + "and tap IMPORT RECEIVED IDENTITY."
+                            );
+                            setStatus("Identity file received. It has not been imported yet.");
+                            stopIdentityTransferServer();
+                        });
+                    }
+
+                    @Override
+                    public void onTransferError(String message) {
+                        mainHandler.post(() -> setStatus("Transfer error: " + message));
+                    }
+                }
+        );
 
         try {
-
-            ((Activity) getContext()).startActivityForResult(
-                    intent,
-                    FILE_PICKER_REQUEST
+            transferServer.start(fi.iki.elonen.NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+            String address = "http://" + host + ":" + TRANSFER_PORT + "/?token=" + token;
+            transferInfoText.setText(
+                    "ON YOUR WINDOWS LAPTOP, open this address in Chrome:\n\n"
+                            + address
+                            + "\n\nSelect tapingo_identity_new.p12 and send it. "
+                            + "The password is NOT entered on the laptop."
             );
-
-            setStatus("Select tapingo_test_identity.p12");
-
+            setStatus("Temporary transfer server running on port " + TRANSFER_PORT + ".");
         } catch (Exception e) {
-
-            setStatus("Could not open file picker: " + errorMessage(e));
+            stopIdentityTransferServer();
+            setStatus("Could not start transfer server: " + errorMessage(e));
         }
     }
 
-    public void handleFileResult(
-            int requestCode,
-            int resultCode,
-            Intent data
-    ) {
+    private String createOneTimeToken() {
+        byte[] bytes = new byte[16];
+        new SecureRandom().nextBytes(bytes);
+        StringBuilder result = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            result.append(String.format(java.util.Locale.US, "%02x", value & 0xff));
+        }
+        return result.toString();
+    }
 
-        if (requestCode != FILE_PICKER_REQUEST) {
+    private void stopIdentityTransferServer() {
+        if (transferServer != null) {
+            try {
+                transferServer.stop();
+            } catch (Exception ignored) {
+            }
+            transferServer = null;
+        }
+    }
+
+    private void importReceivedIdentity() {
+        if (shutDown) return;
+        if (receivedIdentityFile == null || !receivedIdentityFile.isFile()) {
+            setStatus("No identity file has been received yet. Start the laptop transfer first.");
             return;
         }
 
-        if (resultCode != Activity.RESULT_OK
-                || data == null
-                || data.getData() == null) {
-
-            setStatus("Identity file selection cancelled.");
-            return;
-        }
-
-        Uri selectedFile = data.getData();
-
-        String password =
-                passwordInput.getText().toString();
-
+        String password = passwordInput.getText().toString();
         if (password.isEmpty()) {
-            setStatus("Enter your identity password first.");
+            setStatus("Enter the .p12 password on the TV first.");
             return;
         }
 
         importButton.setEnabled(false);
         connectButton.setEnabled(false);
-
-        setStatus("Importing identity securely...");
+        setStatus("Validating identity and importing it into TV storage...");
 
         executor.execute(() -> {
-
             try {
-
-                ClientIdentityStore.Identity imported =
-                        TestIdentityLoader.importIdentity(
-                                getContext(),
-                                selectedFile,
-                                password.toCharArray()
-                        );
+                ClientIdentityStore.Identity imported = TestIdentityLoader.importIdentity(
+                        getContext(),
+                        receivedIdentityFile,
+                        password.toCharArray()
+                );
 
                 identity = imported;
+                File importedFile = receivedIdentityFile;
+                receivedIdentityFile = null;
+                if (importedFile.exists() && !importedFile.delete()) {
+                    // The private app copy has already been created; report cleanup separately.
+                }
 
                 mainHandler.post(() -> {
-
                     passwordInput.setText("");
-
                     importButton.setEnabled(false);
                     connectButton.setEnabled(true);
-
-                    setStatus(
-                            "Identity imported successfully. "
-                            + "You can now connect."
-                    );
+                    transferInfoText.setText("Identity is now stored securely inside this app.");
+                    setStatus("Identity imported successfully. You can now connect to the TV.");
                 });
-
             } catch (Exception e) {
-
                 String message = errorMessage(e);
-
                 mainHandler.post(() -> {
-
-                    importButton.setEnabled(true);
-
+                    importButton.setEnabled(receivedIdentityFile != null
+                            && receivedIdentityFile.isFile());
                     setStatus("Identity import failed: " + message);
                 });
             }
         });
     }
 
-    private void connectToTv() {
+    /** Retained because MainActivity still forwards the old file-picker callback. */
+    public void handleFileResult(int requestCode, int resultCode, android.content.Intent data) {
+        // Android TV has no usable document picker on this device; transfer is via laptop browser.
+    }
 
-        if (shutDown || identity == null || connected) {
-            return;
-        }
+    private void connectToTv() {
+        if (shutDown || identity == null || connected) return;
 
         String host = hostInput.getText().toString().trim();
-
         if (host.isEmpty()) {
             setStatus("Enter your TV IP address.");
             return;
         }
 
         connectButton.setEnabled(false);
-
         setStatus("Connecting to TV on port 6466...");
 
         remoteClient = new RemoteV2Client(
                 host,
                 identity,
                 new RemoteV2Client.Listener() {
-
                     @Override
                     public void onStatus(String message) {
                         mainHandler.post(() -> setStatus(message));
@@ -311,188 +321,103 @@ public class AtvControlPanel extends LinearLayout {
 
                     @Override
                     public void onConnected() {
-
                         mainHandler.post(() -> {
-
                             connected = true;
-
                             connectButton.setEnabled(false);
                             disconnectButton.setEnabled(true);
-
                             setControlButtonsEnabled(true);
-
-                            setStatus(
-                                    "CONNECTED — Remote v2 session active."
-                            );
+                            setStatus("CONNECTED — Remote v2 session active.");
                         });
                     }
 
                     @Override
                     public void onDisconnected(String reason) {
-
                         mainHandler.post(() -> {
-
                             connected = false;
-
                             connectButton.setEnabled(identity != null);
                             disconnectButton.setEnabled(false);
-
                             setControlButtonsEnabled(false);
-
                             setStatus("Disconnected from TV: " + reason);
                         });
                     }
 
                     @Override
                     public void onError(String message) {
-
                         mainHandler.post(() -> {
-
                             connected = false;
-
                             connectButton.setEnabled(identity != null);
                             disconnectButton.setEnabled(false);
-
                             setControlButtonsEnabled(false);
-
                             setStatus("Connection error: " + message);
                         });
                     }
                 }
         );
-
         remoteClient.connect();
     }
 
     private void sendControl(String label) {
-
-        if (!connected || remoteClient == null) {
-            return;
-        }
+        if (!connected || remoteClient == null) return;
 
         switch (label) {
-
-    case "UP":
-        remoteClient.pressUp();
-        break;
-
-    case "DOWN":
-        remoteClient.pressDown();
-        break;
-
-    case "LEFT":
-        remoteClient.pressLeft();
-        break;
-
-    case "RIGHT":
-        remoteClient.pressRight();
-        break;
-
-    case "OK":
-        remoteClient.pressCenter();
-        break;
-
-    case "HOME":
-        remoteClient.pressHome();
-        break;
-
-    case "BACK":
-        remoteClient.pressBack();
-        break;
-
-    case "VOL +":
-        remoteClient.volumeUp();
-        break;
-
-    case "VOL -":
-        remoteClient.volumeDown();
-        break;
-
-    case "MUTE":
-        remoteClient.mute();
-        break;
-
-    case "PLAY / PAUSE":
-        remoteClient.playPause();
-        break;
-
-    case "POWER":
-        remoteClient.power();
-        break;
-}
+            case "UP": remoteClient.pressUp(); break;
+            case "DOWN": remoteClient.pressDown(); break;
+            case "LEFT": remoteClient.pressLeft(); break;
+            case "RIGHT": remoteClient.pressRight(); break;
+            case "OK": remoteClient.pressCenter(); break;
+            case "HOME": remoteClient.pressHome(); break;
+            case "BACK": remoteClient.pressBack(); break;
+            case "VOL +": remoteClient.volumeUp(); break;
+            case "VOL -": remoteClient.volumeDown(); break;
+            case "MUTE": remoteClient.mute(); break;
+            case "PLAY / PAUSE": remoteClient.playPause(); break;
+            case "POWER": remoteClient.power(); break;
+        }
     }
 
     private void disconnect() {
-
         if (remoteClient != null) {
             remoteClient.disconnect();
             remoteClient = null;
         }
-
         connected = false;
-
         connectButton.setEnabled(identity != null);
         disconnectButton.setEnabled(false);
-
         setControlButtonsEnabled(false);
-
         setStatus("Disconnect requested.");
     }
 
     private void setControlButtonsEnabled(boolean enabled) {
-
         for (int i = 0; i < getChildCount(); i++) {
-
             View child = getChildAt(i);
-
-            if (!(child instanceof LinearLayout)) {
-                continue;
-            }
-
+            if (!(child instanceof LinearLayout)) continue;
             LinearLayout row = (LinearLayout) child;
-
             for (int j = 0; j < row.getChildCount(); j++) {
-
                 View item = row.getChildAt(j);
-
-                if (item instanceof Button) {
-                    item.setEnabled(enabled);
-                }
+                if (item instanceof Button) item.setEnabled(enabled);
             }
         }
     }
 
     private void setStatus(String message) {
-
-        if (statusText != null) {
-            statusText.setText("Status: " + message);
-        }
+        if (statusText != null) statusText.setText("Status: " + message);
     }
 
     private String errorMessage(Exception e) {
-
         String message = e.getMessage();
-
-        if (message == null || message.trim().isEmpty()) {
-            return e.getClass().getSimpleName();
-        }
-
-        return message;
+        return (message == null || message.trim().isEmpty())
+                ? e.getClass().getSimpleName()
+                : message;
     }
 
     public void shutdown() {
-
-        if (shutDown) {
-            return;
-        }
-
+        if (shutDown) return;
         shutDown = true;
-
+        stopIdentityTransferServer();
         if (remoteClient != null) {
             remoteClient.disconnect();
             remoteClient = null;
         }
-
         executor.shutdown();
     }
 }
